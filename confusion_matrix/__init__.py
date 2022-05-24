@@ -16,9 +16,9 @@ def init(
     Populates a confusion-matrix based on K confusion-pairs.
 
     Confusion-pair:
-        - value in ax0
-        - value in ax1
-        - weight (optionally)
+        - ax0_value
+        - ax1_value
+        - weight (optional)
 
     Parameters
     ----------
@@ -26,15 +26,15 @@ def init(
         Name of axis-0.
     ax0_values : array of K floats.
         Axis-0 value of the confusion-pairs.
-    ax0_bin_edges : array of M floats
-        Bin-edges to histogram axis-0 in.
+    ax0_bin_edges : array of (M+1) floats
+        Edges of the bins used to histogram ax0.
     ax1_key : str
         Name of axis-1.
     ax1_values : array of K floats.
         Axis-0 value of the confusion-pairs.
-    ax1_bin_edges : array of N floats
-        Bin-edges to histogram axis-1 in.
-    ax0_weights : array of K floats.
+    ax1_bin_edges : array of (N+1) floats
+        Edges of the bins used to histogram ax1.
+    weights : array of K floats.
         Weights of the confusion-pairs.
     min_exposure_ax0 : float
         Minimal exposure counts on axis-0 in order to normalize on axis-0.
@@ -56,10 +56,16 @@ def init(
             I.e. sum(counts_normalized_on_ax0, axis=0) = 1.
         - counts_normalized_on_ax0_au : array(M x N)
             Absolute uncertainty of counts_normalized_on_ax0.
+        - counts_ax0 : array(M)
+            Projection of counts on ax0.
+        - exposure_ax0 : array(M)
+            Projection of exposure on ax0. Like counts_ax0 but without
+            the confusion-pairs weigths.
     """
     assert len(ax0_values) == len(ax1_values)
-    if ax0_weights is not None:
-        assert len(ax0_values) == len(ax0_weights)
+    if weights is not None:
+        assert len(ax0_values) == len(weights)
+        assert np.all(weights) >= 0.0
 
     num_bins_ax0 = len(ax0_bin_edges) - 1
     assert num_bins_ax0 >= 1
@@ -67,10 +73,12 @@ def init(
     num_bins_ax1 = len(ax1_bin_edges) - 1
     assert num_bins_ax1 >= 1
 
+    # histogram
+    # ---------
     counts = np.histogram2d(
         ax0_values,
         ax1_values,
-        weights=ax0_weights,
+        weights=weights,
         bins=[ax0_bin_edges, ax1_bin_edges],
     )[0]
 
@@ -78,22 +86,21 @@ def init(
         ax0_values, ax1_values, bins=[ax0_bin_edges, ax1_bin_edges],
     )[0]
 
+    # uncertainty
+    # -----------
     counts_ru, counts_au = estimate_relative_and_absolute_uncertainties(
         counts=counts, exposure=exposure,
     )
 
-    counts_normalized_on_ax0 = counts.copy()
-    counts_normalized_on_ax0_au = counts_au.copy()
-
-    for i0 in range(num_bins_ax0):
-        if np.sum(exposure[i0, :]) >= min_exposure_ax0:
-            axsum = np.sum(counts[i0, :])
-            counts_normalized_on_ax0[i0, :] /= axsum
-            counts_normalized_on_ax0_au[i0, :] /= axsum
-        else:
-            counts_normalized_on_ax0[i0, :] = (
-                np.ones(num_bins_ax1) * default_low_exposure
-            )
+    # normalize
+    # ---------
+    counts_normalized_on_ax0, counts_normalized_on_ax0_au = normalize_on_ax0(
+        counts=counts,
+        counts_au=counts_au,
+        exposure=exposure,
+        min_exposure_ax0=min_exposure_ax0,
+        default_low_exposure=default_low_exposure,
+    )
 
     return {
         "ax0_key": ax0_key,
@@ -105,8 +112,8 @@ def init(
         "counts_au": counts_au,
         "counts_normalized_on_ax0": counts_normalized_on_ax0,
         "counts_normalized_on_ax0_au": counts_normalized_on_ax0_au,
-        "exposure_ax0_no_weights": np.sum(exposure, axis=1),
-        "exposure_ax0": np.sum(counts, axis=1),
+        "exposure_ax0": np.sum(exposure, axis=1),
+        "counts_ax0": np.sum(counts, axis=1),
         "min_exposure_ax0": min_exposure_ax0,
     }
 
@@ -164,7 +171,32 @@ def estimate_relative_and_absolute_uncertainties(counts, exposure):
     return rel_unc, abs_unc
 
 
-def apply_confusion_matrix(x, confusion_matrix, x_unc=None):
+def normalize_on_ax0(
+    counts, counts_au, exposure, min_exposure_ax0, default_low_exposure=np.nan
+):
+    assert counts.shape == counts_au.shape
+    assert counts.shape == exposure.shape
+    assert np.all(exposure >= 0)
+    assert min_exposure_ax0 > 0
+    num_bins_ax0 = exposure.shape[0]
+
+    counts_normalized_on_ax0 = counts.copy()
+    counts_normalized_on_ax0_au = counts_au.copy()
+
+    for i0 in range(num_bins_ax0):
+        if np.sum(exposure[i0, :]) >= min_exposure_ax0:
+            axsum = np.sum(counts[i0, :])
+            counts_normalized_on_ax0[i0, :] /= axsum
+            counts_normalized_on_ax0_au[i0, :] /= axsum
+        else:
+            counts_normalized_on_ax0[i0, :] = (
+                np.ones(num_bins_ax1) * default_low_exposure
+            )
+
+    return counts_normalized_on_ax0, counts_normalized_on_ax0_au
+
+
+def apply(x, confusion_matrix, x_unc=None):
     """
     Parameters
     ----------
