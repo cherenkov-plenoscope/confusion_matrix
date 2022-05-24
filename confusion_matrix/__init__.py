@@ -29,21 +29,22 @@ def init(
         bins=[ax0_bin_edges, ax1_bin_edges],
     )[0]
 
-    cb_rel_unc, cb_abs_unc = estimate_rel_abs_uncertainty_in_counts(
-        counts=counts
-    )
-
-    exposure_no_weights = np.histogram2d(
+    exposure = np.histogram2d(
         ax0_values, ax1_values, bins=[ax0_bin_edges, ax1_bin_edges],
     )[0]
 
+    counts_ru, counts_au = estimate_rel_abs_uncertainty_in_counts(
+        counts=counts
+    )
+
     counts_normalized_on_ax0 = counts.copy()
-    cbn_abs_unc = cb_abs_unc.copy()
+    counts_normalized_on_ax0_au = counts_au.copy()
+
     for i0 in range(num_bins_ax0):
-        if np.sum(exposure_no_weights[i0, :]) >= min_exposure_ax0:
+        if np.sum(exposure[i0, :]) >= min_exposure_ax0:
             axsum = np.sum(counts[i0, :])
             counts_normalized_on_ax0[i0, :] /= axsum
-            cbn_abs_unc[i0, :] /= axsum
+            counts_normalized_on_ax0_au[i0, :] /= axsum
         else:
             counts_normalized_on_ax0[i0, :] = (
                 np.ones(num_bins_ax1) * default_low_exposure
@@ -55,31 +56,30 @@ def init(
         "ax0_bin_edges": ax0_bin_edges,
         "ax1_bin_edges": ax1_bin_edges,
         "counts": counts,
-        "counts_rel_unc": cb_rel_unc,
-        "counts_abs_unc": cb_abs_unc,
+        "counts_ru": counts_ru,
+        "counts_au": counts_au,
         "counts_normalized_on_ax0": counts_normalized_on_ax0,
-        "counts_normalized_on_ax0_abs_unc": cbn_abs_unc,
-        "exposure_ax0_no_weights": np.sum(exposure_no_weights, axis=1),
+        "counts_normalized_on_ax0_au": counts_normalized_on_ax0_au,
+        "exposure_ax0_no_weights": np.sum(exposure, axis=1),
         "exposure_ax0": np.sum(counts, axis=1),
         "min_exposure_ax0": min_exposure_ax0,
     }
 
 
 def estimate_rel_abs_uncertainty_in_counts(counts):
-    cb = counts
-    assert np.all(cb >= 0)
-    shape = cb.shape
+    assert np.all(counts >= 0)
+    shape = counts.shape
 
     rel_unc = np.nan * np.ones(shape=shape)
     abs_unc = np.nan * np.ones(shape=shape)
 
-    has_expo = cb > 0
-    no_expo = cb == 0
+    has_expo = counts > 0
+    no_expo = counts == 0
 
     # frequency regime
     # ----------------
-    rel_unc[has_expo] = 1.0 / np.sqrt(cb[has_expo])
-    abs_unc[has_expo] = cb[has_expo] * rel_unc[has_expo]
+    rel_unc[has_expo] = 1.0 / np.sqrt(counts[has_expo])
+    abs_unc[has_expo] = counts[has_expo] * rel_unc[has_expo]
 
     # no frequency regime, have to approximate
     # ----------------------------------------
