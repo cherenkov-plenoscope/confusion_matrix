@@ -12,6 +12,51 @@ def init(
     min_exposure_ax0=100,
     default_low_exposure=np.nan,
 ):
+    """
+    Populates a confusion-matrix based on K confusion-pairs.
+
+    Confusion-pair:
+        - value in ax0
+        - value in ax1
+        - weight (optionally)
+
+    Parameters
+    ----------
+    ax0_key : str
+        Name of axis-0.
+    ax0_values : array of K floats.
+        Axis-0 value of the confusion-pairs.
+    ax0_bin_edges : array of M floats
+        Bin-edges to histogram axis-0 in.
+    ax1_key : str
+        Name of axis-1.
+    ax1_values : array of K floats.
+        Axis-0 value of the confusion-pairs.
+    ax1_bin_edges : array of N floats
+        Bin-edges to histogram axis-1 in.
+    ax0_weights : array of K floats.
+        Weights of the confusion-pairs.
+    min_exposure_ax0 : float
+        Minimal exposure counts on axis-0 in order to normalize on axis-0.
+    default_low_exposure : float
+        Default value for counts_normalized when min_exposure_ax0 is
+        not satisfied.
+
+    Returns
+    -------
+    confusion_matrix : dict
+        - counts : array(M x N)
+            Weighted confusion-matrix.
+        - counts_au : array(M x N)
+            Absolute uncertainty of counts.
+        - counts_ru : array(M x N)
+            Relative uncertainty of counts.
+        - counts_normalized_on_ax0 : array(M x N)
+            Counts but normalized on ax0.
+            I.e. sum(counts_normalized_on_ax0, axis=0) = 1.
+        - counts_normalized_on_ax0_au : array(M x N)
+            Absolute uncertainty of counts_normalized_on_ax0.
+    """
     assert len(ax0_values) == len(ax1_values)
     if ax0_weights is not None:
         assert len(ax0_values) == len(ax0_weights)
@@ -33,8 +78,8 @@ def init(
         ax0_values, ax1_values, bins=[ax0_bin_edges, ax1_bin_edges],
     )[0]
 
-    counts_ru, counts_au = estimate_rel_abs_uncertainty_in_counts(
-        counts=counts
+    counts_ru, counts_au = estimate_relative_and_absolute_uncertainties(
+        counts=counts, exposure=exposure,
     )
 
     counts_normalized_on_ax0 = counts.copy()
@@ -66,19 +111,39 @@ def init(
     }
 
 
-def estimate_rel_abs_uncertainty_in_counts(counts):
-    assert np.all(counts >= 0)
+def estimate_relative_and_absolute_uncertainties(counts, exposure):
+    """
+    A simple estimator for the uncertainty of a confusion-matrix made from
+    confusion-pairs.
+    It uses 1/sqrt in the frequency-regime and falls back to a pseudocount
+    estimatior for bins without any exposure.
+
+    Parameters
+    ----------
+    counts : array(M x N) of floats
+        Histogram of weighted confusion-pairs.
+    exposure : array(M x N) of floats
+        Histogram of confusion-pairs without any weights.
+
+    Returns
+    -------
+    (ru, au) : (array(M x N) of floats, array(M x N) of floats)
+        Two matrices with first the relative, and second the
+        absolute uncertainty of the counts.
+    """
+    assert np.all(exposure >= 0)
+    assert counts.shape == exposure.shape
     shape = counts.shape
 
     rel_unc = np.nan * np.ones(shape=shape)
     abs_unc = np.nan * np.ones(shape=shape)
 
-    has_expo = counts > 0
-    no_expo = counts == 0
+    has_expo = exposure > 0
+    no_expo = exposure == 0
 
     # frequency regime
     # ----------------
-    rel_unc[has_expo] = 1.0 / np.sqrt(counts[has_expo])
+    rel_unc[has_expo] = 1.0 / np.sqrt(exposure[has_expo])
     abs_unc[has_expo] = counts[has_expo] * rel_unc[has_expo]
 
     # no frequency regime, have to approximate
@@ -90,7 +155,7 @@ def estimate_rel_abs_uncertainty_in_counts(counts):
     assert pseudocount <= 1.0
 
     if pseudocount == 0:
-        # this can not be saved
+        # this can not be recovered
         return rel_unc, abs_unc
 
     rel_unc[no_expo] = 1.0 / np.sqrt(pseudocount)
