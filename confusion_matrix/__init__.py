@@ -1,7 +1,7 @@
 import numpy as np
 
 
-def make_confusion_matrix(
+def init(
     ax0_key,
     ax0_values,
     ax0_bin_edges,
