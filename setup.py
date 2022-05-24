@@ -16,7 +16,6 @@ setuptools.setup(
     author="Sebastian Achim Mueller",
     author_email="sebastian-achim.mueller@mpi-hd.mpg.de",
     packages=["confusion_matrix",],
-    package_data={"confusion_matrix": [os.path.join("tests", "resources", "*")]},
     install_requires=[],
     classifiers=[
         "Programming Language :: Python :: 3",
