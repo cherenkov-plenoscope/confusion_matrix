@@ -8,7 +8,7 @@ def init(
     ax1_key,
     ax1_values,
     ax1_bin_edges,
-    ax0_weights=None,
+    weights=None,
     min_exposure_ax0=100,
     default_low_exposure=np.nan,
 ):
