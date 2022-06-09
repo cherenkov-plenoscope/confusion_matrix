@@ -179,6 +179,7 @@ def normalize_on_ax0(
     assert np.all(exposure >= 0)
     assert min_exposure_ax0 > 0
     num_bins_ax0 = exposure.shape[0]
+    num_bins_ax1 = exposure.shape[1]
 
     counts_normalized_on_ax0 = counts.copy()
     counts_normalized_on_ax0_au = counts_au.copy()

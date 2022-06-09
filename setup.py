@@ -5,7 +5,7 @@ with open("README.rst", "r", encoding="utf-8") as f:
 
 setuptools.setup(
     name="confusion_matrix_sebastian-achim-mueller",
-    version="0.0.3",
+    version="0.0.4",
     description="Create confusion-matrices",
     long_description=long_description,
     long_description_content_type="text/x-rst",
