@@ -1,3 +1,4 @@
+from .version import __version__
 import numpy as np
 
 
@@ -83,13 +84,16 @@ def init(
     )[0]
 
     exposure = np.histogram2d(
-        ax0_values, ax1_values, bins=[ax0_bin_edges, ax1_bin_edges],
+        ax0_values,
+        ax1_values,
+        bins=[ax0_bin_edges, ax1_bin_edges],
     )[0]
 
     # uncertainty
     # -----------
     counts_ru, counts_au = estimate_relative_and_absolute_uncertainties(
-        counts=counts, exposure=exposure,
+        counts=counts,
+        exposure=exposure,
     )
 
     # normalize

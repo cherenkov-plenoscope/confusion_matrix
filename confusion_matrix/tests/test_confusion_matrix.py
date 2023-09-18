@@ -4,7 +4,13 @@ import pytest
 
 
 def test_apply_unity_confusion_matrix():
-    x = np.array([1, 2, 3,])
+    x = np.array(
+        [
+            1,
+            2,
+            3,
+        ]
+    )
     cm = np.eye(3)
     y = confusion_matrix.apply(x, cm)
     assert y[0] == x[0]
@@ -13,8 +19,20 @@ def test_apply_unity_confusion_matrix():
 
 
 def test_apply_confusion_matrix():
-    x = np.array([1, 2, 3,])
-    cm = np.array([[0.9, 0.1, 0.0], [0.2, 0.7, 0.1], [0.1, 0.1, 0.8],])
+    x = np.array(
+        [
+            1,
+            2,
+            3,
+        ]
+    )
+    cm = np.array(
+        [
+            [0.9, 0.1, 0.0],
+            [0.2, 0.7, 0.1],
+            [0.1, 0.1, 0.8],
+        ]
+    )
     y = confusion_matrix.apply(x, cm)
     assert y[0] == x[0] * 0.9 + x[1] * 0.2 + x[2] * 0.1
     assert y[1] == x[0] * 0.1 + x[1] * 0.7 + x[2] * 0.1
@@ -24,13 +42,31 @@ def test_apply_confusion_matrix():
 def test_confusion_matrix_bad_dimensions():
     with pytest.raises(AssertionError) as err:
         x = np.array([1, 2])
-        cm = np.array([[1,]])
+        cm = np.array(
+            [
+                [
+                    1,
+                ]
+            ]
+        )
         y = confusion_matrix.apply(x, cm)
 
 
 def test_confusion_matrix_not_normalized():
-    x = np.array([1, 2, 3,])
-    cm = np.array([[0.9, 0.1, 0.0], [0.1, 0.7, 0.1], [0.0, 0.2, 0.9],])
+    x = np.array(
+        [
+            1,
+            2,
+            3,
+        ]
+    )
+    cm = np.array(
+        [
+            [0.9, 0.1, 0.0],
+            [0.1, 0.7, 0.1],
+            [0.0, 0.2, 0.9],
+        ]
+    )
     with pytest.raises(AssertionError) as err:
         y = confusion_matrix.apply(x, cm)
     y = confusion_matrix.apply(x, cm.T)
@@ -76,7 +112,7 @@ def test_init():
     assert np.all(cm["counts_ru"] >= 0)
     assert cm["counts_au"].shape == (ax0n, ax1n)
     assert np.all(cm["counts_au"] >= 0)
-    assert cm["exposure_ax0"].shape == (ax0n, )
-    assert cm["counts_ax0"].shape == (ax0n, )
+    assert cm["exposure_ax0"].shape == (ax0n,)
+    assert cm["counts_ax0"].shape == (ax0n,)
     assert np.sum(cm["counts_ax0"]) == np.sum(cm["counts"])
     assert cm["min_exposure_ax0"] == min_exposure_ax0
